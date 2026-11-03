@@ -1,6 +1,6 @@
 // 投稿カード用の素材を撮る（Chrome headless / CDP・DPR2）。実行: node source/shoot.js <出力フォルダ> [--probe]
 // 01-x-primary: 送り直しの前後比較（お店が幹事さんの送り直しを開き「一覧に取り込む」を押したところ）。幅600px（本文は最大520px）。枠の上端〜「新しい内容で上書きする」まで
-// 02-list-1000: お店の画面（幅1000px・2列）。上側を切り出す（左はリンクを作るフォームの上部、右は予約の一覧4件と「これからの団体予約 4件・計52人」）
+// 02-list-1000: お店の画面（幅1000px・2列）。上側を切り出す（左は「見本を入れる」で埋めた確認リンクのフォームの上部、右は予約の一覧4件と「これからの団体予約 4件・計52人」）
 //   左の「リンクを作った直後のURL」と右の一覧は約1,900px離れて1枚に入らないため（タダス実測）、一覧が入る範囲にした
 // 見本はすべて架空。2026-11-04 22:00 を今として撮る（仕様カード第6節・第2-6節）
 const fs = require('fs'), path = require('path'), http = require('http');
@@ -43,7 +43,7 @@ const NOWF = { adults: '13', kids: '0', counts: ['9', '4'], drinkN: '11', alg: [
 
   // 02: お店の画面の一覧（サンプル4件）
   await b.ev(`localStorage.clear()`);
-  await go(ORIGIN, 1000); await b.ev(click('サンプルを入れる')); await b.sleep(200); await b.ev(`scrollTo(0,0)`);
+  await go(ORIGIN, 1000); await b.ev(click('サンプルを入れる')); await b.sleep(200); await b.ev(click('見本を入れる')); await b.sleep(200); await b.ev(`scrollTo(0,0)`);
   const lay = await b.ev(rectEv(`document.querySelector('.layout')`));
   const right = await b.ev(rectEv(`document.querySelector('.layout').children[1].querySelector('.panel')`));
   const vw = await b.ev(`document.documentElement.clientWidth`);
