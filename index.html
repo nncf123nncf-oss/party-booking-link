@@ -780,6 +780,19 @@ var POUI = (function () {
     var form = h('div', { class: 'panel' });
     left.appendChild(form);
     form.appendChild(h('h2', { text: '幹事さんに送る確認リンクを作る' }));
+    // 見本（すべて架空）。入力中の内容があれば、上書きしてよいか画面の中で確かめる
+    var fillBox = h('div');
+    function fillSample() {
+      draft = sampleDraft();
+      if (!PO.clean(store.shop)) { store.shop = 'いろり屋'; if (storeIssue !== 'broken') saveStore(store); }
+      renderShop('見本を入れました（架空の内容です）。「リンクを作る」を押すと、幹事さんに送るリンクができます。');
+    }
+    form.appendChild(h('div', { class: 'btns' }, [h('button', { type: 'button', text: '見本を入れる', onclick: function () {
+      var typed = PO.clean(draft.name) || draft.day || draft.courses.some(function (c) { return PO.clean(c[0]) || PO.clean(c[1]); });
+      if (typed) askInline(fillBox, '入力中の内容を、見本で置き換えます。', '見本で置き換える', fillSample);
+      else fillSample();
+    } })]));
+    form.appendChild(fillBox);
     function field(label, hint, input) { var id = 'f' + (++uid); input.id = id; return h('div', null, [h('label', { class: 'f', for: id }, [label, hint ? h('span', { class: 'hint', text: hint }) : null]), input]); }
     var shopIn = h('input', { type: 'text', maxlength: PO.LIM.shop, autocomplete: 'off', placeholder: '例 いろり屋' });
     var nameIn = h('input', { type: 'text', maxlength: PO.LIM.name, autocomplete: 'off', placeholder: '例 たなか' });
@@ -904,6 +917,12 @@ var POUI = (function () {
       saveStore(store); brokenBox.hidden = !storeIssue; renderList(); edited();
     });
     renderList();
+  }
+  // 確認リンクの欄の見本（すべて架空）。予約日は今日から30日以上先の金曜、人数を決めてほしい日はその7日前
+  function sampleDraft() {
+    var day = PO.addDays(PO.today(), 30);
+    while (new Date(PO.dayNum(day) * 86400000).getUTCDay() !== 5) day = PO.addDays(day, 1);
+    return { name: 'さとう', day: day, time: '19:00', plan: '12', courses: [['おまかせ鍋コース', '4500'], ['軽めのおつまみコース', '3500']], drink: { on: true, price: '1800', min: '120' }, dl: PO.addDays(day, -7) };
   }
   // サンプル（すべて架空）。日付は今日から数えて作る（予約日が過ぎないように）
   function sampleItems() {

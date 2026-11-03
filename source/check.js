@@ -62,6 +62,22 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
   ok('drink default none', await b.ev(`document.querySelector('#app input[name=drink][value="0"]').checked`));
   await b.ev(click('リンクを作る')); await b.sleep(100);
   ok('ask needs name/day/course', /幹事さんの呼び名を入れてください/.test(await b.ev(body)) && /予約日を入れてください/.test(await b.ev(body)) && /コース1の名前を入れてください/.test(await b.ev(body)) && await b.ev(linkHidden));
+  // 1b) 確認リンクの欄の見本（11/4 を今日として、30日以上先の金曜 12/4・人数を決めてほしい日 11/27）
+  await reopen();
+  await b.ev(click('見本を入れる')); await b.sleep(120);
+  const sd = await b.ev(`(()=>{const v=s=>[...document.querySelectorAll('#app input')].find(x=>x.placeholder===s).value;return {shop:v('例 いろり屋'),name:v('例 たなか'),day:document.querySelectorAll('#app input[type=date]')[0].value,dl:document.querySelectorAll('#app input[type=date]')[1].value,time:document.querySelectorAll('#app select')[0].value,plan:[...document.querySelectorAll('.step')].find(x=>x.querySelector('.sl').firstChild.textContent==='予定人数').querySelector('input').value,courses:[...document.querySelectorAll('.course input')].map(e=>e.value),drink:document.querySelector('#app input[name=drink][value="1"]').checked,dp:v('例 1800'),notice:(document.querySelector('.notice')||{}).textContent}})()`);
+  ok('sample form filled', sd.shop === 'いろり屋' && sd.name === 'さとう' && sd.day === '2026-12-04' && sd.dl === '2026-11-27' && sd.time === '19:00' && sd.plan === '12' && JSON.stringify(sd.courses) === '["おまかせ鍋コース","4500","軽めのおつまみコース","3500"]' && sd.drink && sd.dp === '1800' && /見本を入れました/.test(sd.notice), sd);
+  ok('sample form list untouched', (await b.ev(`document.querySelectorAll('.items > li').length`)) === 0);
+  m = await b.ev(measure); ok('sample form 375 no overflow', m.sw <= 375 && !m.over.length, m); ok('sample form 375 targets', !m.small.length, m.small);
+  await b.ev(click('リンクを作る')); await b.sleep(120);
+  ok('sample form makes link', /#q1=/.test(await b.ev(`document.querySelector('textarea.urlbox').value`)) && /^【いろり屋】\nさとう さま\n12月4日（金）19:00〜のご予約ありがとうございます\n/.test(await b.ev(`document.querySelector('.msgbox').value`)) && /人数は11月27日（金）までにお知らせください/.test(await b.ev(`document.querySelector('.msgbox').value`)));
+  await b.ev(val('例 たなか', 'すずき')); await b.ev(click('見本を入れる')); await b.sleep(80);
+  ok('sample asks when typed', /入力中の内容を、見本で置き換えます/.test(await b.ev(askText)));
+  await b.ev(click('やめる')); await b.sleep(60);
+  ok('sample cancel keeps typed', await b.ev(`document.querySelector('#app input[placeholder="例 たなか"]').value`) === 'すずき');
+  await b.ev(click('見本を入れる')); await b.sleep(60); await b.ev(click('見本で置き換える')); await b.sleep(120);
+  ok('sample replace', await b.ev(`document.querySelector('#app input[placeholder="例 たなか"]').value`) === 'さとう');
+  await b.ev(`localStorage.clear()`); await reopen();
   // 2) Card1 の確認リンクを作る
   await b.ev(val('例 いろり屋', 'いろり屋')); await b.ev(val('例 たなか', 'たなか')); await b.ev(dateIn(0, '2026-12-11'));
   await b.ev(step('予定人数', 15));
