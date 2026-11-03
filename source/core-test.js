@@ -35,7 +35,16 @@ ok('S5 rows course', rmap['おまかせ鍋コース 4,500円'].delta === '▼2' 
 ok('S5 rows drink', rmap['飲み放題（1人1,800円・120分）'].prev === '13人' && rmap['飲み放題（1人1,800円・120分）'].delta === '▼2', rows);
 ok('S5 rows alg', rmap['アレルギー・苦手'].now === 'アレルギー: えび 1人\n苦手: パクチー 2人' && rmap['アレルギー・苦手'].changed);
 ok('S5 rows pay same', !rmap['お支払い・領収書'].changed && rmap['合計の目安'].now === '74,300円');
-ok('S5 increase arrow', PO.compareRows(a.cfg, a0.cfg)[0].delta === '▲2');
+ok('S5 increase arrow', PO.compareRows(a.cfg, a0.cfg).find(r => r.label === '人数').delta === '▲2');
+ok('S5 day row unchanged', !rmap['予約日・時刻'].changed && rmap['予約日・時刻'].now === '12月11日（金）19:00〜');
+// レビュー①: 同じ名前のコースは止める（入力・URLとも）
+ok('R1-2 dup course stops', !PO.toQuestion(Object.assign({}, QF, { courses: [['鍋', '4500'], ['鍋 ', '4500']] })).cfg && PO.toQuestion(Object.assign({}, QF, { courses: [['鍋', '4500'], ['ｎａｂｅ', '1'], ['NABE', '1']] })).errors.some(e => /重なっています/.test(e)));
+// レビュー①: 予約日・呼び名だけ違う返事も「変わった」と出る
+ok('R1-8 day change detected', JSON.stringify(PO.changes(a.cfg, Object.assign({}, a.cfg, { day: '2026-12-12' }))) === '["予約日・時刻"]' && PO.compareRows(a.cfg, Object.assign({}, a.cfg, { day: '2026-12-12' })).find(r => r.label === '予約日・時刻').changed);
+// レビュー①: アレルギーの並びが違うだけなら変わっていない
+ok('R1-10 alg order ignored', !PO.changes(a.cfg, Object.assign({}, a.cfg, { alg: a.cfg.alg.slice().reverse() })).length && !PO.compareRows(a.cfg, Object.assign({}, a.cfg, { alg: a.cfg.alg.slice().reverse() })).find(r => r.label === 'アレルギー・苦手').changed);
+// レビュー①: コースの並びが同じなら位置で比べる（入れ替えも見える）
+ok('R1-2 swap counts visible', PO.compareRows(a0.cfg, Object.assign({}, a0.cfg, { counts: [4, 11] })).filter(r => r.changed && /コース/.test(r.label)).length === 2);
 const u1 = BASE + '#' + PO.encodeQ(q.cfg), u2 = BASE + '#' + PO.encodeA(a.cfg);
 console.log('   確認リンクの長さ', u1.length, '／返すリンクの長さ', u2.length);
 ok('S3 roundtrip q (Card1)', JSON.stringify(PO.decodeHash(PO.encodeQ(q.cfg)).cfg) === JSON.stringify(q.cfg));
@@ -46,7 +55,7 @@ let q2 = PO.toQuestion({ shop: '', name: 'こばやし様', day: '2026-12-25', t
 ok('ask msg no shop / honorific', q2.cfg && PO.askMessage(q2.cfg, '') === '【ご予約の確認】\nこばやし様\n12月25日（金）18:00〜のご予約ありがとうございます\n人数とコース\nアレルギーなどを\n選んでいただけますか', q2.errors || PO.askMessage(q2.cfg, ''));
 let a2 = PO.toAnswer(q2.cfg, { adults: '7', kids: '2', counts: [], drinkN: '', alg: [], pay: '2', rcpt: '0', note: '子ども2人は取り分けで' });
 ok('single course auto count', a2.cfg && JSON.stringify(a2.cfg.counts) === '[9]' && a2.cfg.drinkN === 0, a2.errors);
-ok('answer msg kids/no drink', a2.cfg && PO.answerMessage(a2.cfg, '') === '【ご予約内容】\nこばやし様 より\n12月25日（金）18:00〜\n人数: 9人（大人7・子ども2）\n・おつまみ 3,500円: 9人\nアレルギー・苦手: なし\nお支払い: 当日決める・領収書: 要らない\nひと言: 子ども2人は取り分けで', a2.cfg && PO.answerMessage(a2.cfg, ''));
+ok('answer msg kids/no drink', a2.cfg && PO.answerMessage(a2.cfg, '') === '【ご予約内容】\nこばやし様 より\n12月25日（金）18:00〜\n人数: 9人（大人7・子ども2）\n・おつまみ 3,500円: 9人\nアレルギー・苦手: 記入なし\nお支払い: 当日決める・領収書: 要らない\nひと言: 子ども2人は取り分けで', a2.cfg && PO.answerMessage(a2.cfg, ''));
 
 // S4: 人数の整合
 const bad = (f, re, n) => { const r = PO.toAnswer(q.cfg, Object.assign({}, nowF, f)); ok('S4 ' + n, !r.cfg && r.errors.some(e => re.test(e)), r.errors); return r; };
@@ -95,7 +104,7 @@ const broken = {
   algOver: HA(mut(aa, 11, [['えび', 14, 0]])), algType: HA(mut(aa, 11, [['えび', 1, 2]])), algMany: HA(mut(aa, 11, Array(6).fill(['えび', 1, 0]))),
   payBad: HA(mut(aa, 12, 3)), rcptBad: HA(mut(aa, 13, 2)), noDate: HA(mut(aa, 3, '2026-02-30')), badTime: HA(mut(aa, 4, '19:10')),
   future: HA(mut(aa, 15, '2026-11-07T10:00')), badStamp: HA(mut(aa, 15, '2026-11-04 21:10')), badRid: HA(mut(aa, 16, 'X')),
-  coursePrice: HA(mut(aa, 5, [['鍋', -1]])), courseMany: HA(mut(mut(aa, 5, Array(5).fill(['鍋', 1])), 9, [13, 0, 0, 0, 0])), courseName: HA(mut(aa, 5, [['https://a.jp', 1]])),
+  coursePrice: HA(mut(aa, 5, [['鍋', -1]])), courseMany: HA(mut(mut(aa, 5, Array(5).fill(['鍋', 1])), 9, [13, 0, 0, 0, 0])), courseName: HA(mut(aa, 5, [['https://a.jp', 1]])), courseDup: HA(mut(mut(aa, 5, [['鍋', 1], ['鍋', 1]]), 9, [13, 0])),
   qDayBeforeMade: HQ(mut(qa, 3, '2026-11-02')), qDlAfterDay: HQ(mut(qa, 8, '2026-12-12')), qFuture: HQ(mut(qa, 9, '2026-11-08T00:00')), qPlan: HQ(mut(qa, 5, 61)),
   qDrinkMin: HQ(mut(qa, 7, [1800, 10])), long: '#a1=' + 'A'.repeat(2100), nameHtmlLink: HA(mut(aa, 2, 'www.x.jp'))
 };
@@ -106,7 +115,7 @@ ok('S6 tomorrow ok (timezone margin)', !!PO.decodeHash(HA(mut(aa, 15, '2026-11-0
 // S7: 文字の制限
 const okText = ['いろり屋 2F', 'おまかせ鍋コース', 'えび', '乾杯は19時半からです', '子ども2人は取り分けで', '生もの', '👨‍👩‍👧 家族'];
 okText.forEach(t => ok('S7 pass ' + t, !PO.blockedReason(t)));
-const ngText = ['https://x.jp', 'abc.com', 'a@b', '090-1234-5678', '1234567', '振込は', '口座', '4500円', '¥4500', 'LINE ID', '料金は'];
+const ngText = ['前金', '内金あり', 'デポジット5000', 'キャンセル料は不要です', 'https://x.jp', 'abc.com', 'a@b', '090-1234-5678', '1234567', '振込は', '口座', '4500円', '¥4500', 'LINE ID', '料金は'];
 ngText.forEach(t => ok('S7 block ' + t, !!PO.blockedReason(t)));
 ok('S7 name 10 ok / 11 ng', !!PO.toQuestion(Object.assign({}, QF, { name: 'あ'.repeat(10) })).cfg && !PO.toQuestion(Object.assign({}, QF, { name: 'あ'.repeat(11) })).cfg);
 ok('S7 course 20 ok / 21 ng', !!PO.toQuestion(Object.assign({}, QF, { courses: [['あ'.repeat(20), '1']] })).cfg && !PO.toQuestion(Object.assign({}, QF, { courses: [['あ'.repeat(21), '1']] })).cfg);

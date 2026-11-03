@@ -116,6 +116,16 @@
   .cmp tr.chg th::before { content: "● "; color: var(--accent); }
   .cmp .dl { display: inline-block; font-weight: 800; color: var(--accent); white-space: nowrap; }
   .cmp .old { color: var(--danger); font-weight: 800; font-size: 14px; }
+  .cmp td::before { content: attr(data-h); display: none; font-size: 12px; font-weight: 700; color: var(--ink3); }
+  @media (max-width: 480px) {
+    .cmp table, .cmp tbody { display: block; }
+    .cmp thead { display: none; }
+    .cmp tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+    .cmp th, .cmp td { border-bottom: 0; }
+    .cmp tbody th { grid-column: 1 / -1; width: auto; padding-bottom: 0; }
+    .cmp td.prev { width: auto; }
+    .cmp td::before { display: block; }
+  }
   .linkbtn { background: none; border: 0; color: var(--accent); text-decoration: underline; padding: 8px 0; min-height: 44px; font-size: 15px; }
   .items { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
   .item { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); padding: 10px 12px; min-width: 0; }
@@ -150,7 +160,7 @@
   <footer class="mw-footer">
     <p>みちAIワークス（MICHI AI WORKS）／代表 田中　泉</p>
     <p>運営: <a href="https://michi-portfolio.vercel.app/" rel="noopener">みちAIワークス 公式サイト</a>（https://michi-portfolio.vercel.app/ ）／ お問い合わせ: <a href="mailto:nncf123nncf@gmail.com">nncf123nncf@gmail.com</a></p>
-    <p>入力した内容は、お使いの端末のブラウザで扱います。団体予約の一覧は、お店の端末のブラウザにだけ保存します。リンクの画面は、リンクを作った方・選んだ方が入力した内容を表示するだけで、当サイトは内容の確認や保証をしていません。予約の受付や確定、アレルギーへの対応の判断はしません。アクセス解析（Cloudflare Web Analytics）で、ページの閲覧状況（閲覧数・参照元・ブラウザの種類など）を計測しています。</p>
+    <p>入力した内容は、お使いの端末のブラウザで扱います。団体予約の一覧は、お店の端末のブラウザにだけ保存します。リンクの画面は、リンクを作った方・選んだ方が入力した内容を表示するだけで、当サイトは内容を確かめていません。予約を受け付けたり決めたりすることや、アレルギーへの対応の判断はしません。アクセス解析（Cloudflare Web Analytics）で、ページの閲覧状況（閲覧数・参照元・ブラウザの種類など）を計測しています。</p>
     <p>ログイン・会員登録・パスワードの入力を求めることはありません。</p>
   </footer>
 </main>
@@ -162,17 +172,14 @@ var PO = (function () {
   var HASH_MAX = 2000, URL_MAX = 2000;
   var PAY = ['まとめて', 'ひとりずつ', '当日決める'];
   var RCPT = ['要らない', '要る'];
-  var ALG = ['アレルギー', '苦手'];
   // 一覧に出す「変わった項目」の名前（並びもこの順）
-  var FIELDS = ['人数', 'コース', '飲み放題', 'アレルギー・苦手', 'お支払い', '領収書', 'ひと言'];
+  var FIELDS = ['予約日・時刻', '人数', 'コース', '飲み放題', 'アレルギー・苦手', 'お支払い', '領収書', 'ひと言'];
   var WD = ['日', '月', '火', '水', '木', '金', '土'];
 
   // 向きを変える文字・見えない文字（書式文字 Cf）とハングルのフィラーは落とす（Day085・086と同じ）
   // 絵文字をつなぐ文字（ZWJ）だけは残す（家族の絵文字などがばらばらにならないように）
   var RE_INVISIBLE = new RegExp('(?!' + String.fromCharCode(0x200d) + ')[\\p{Cf}' + String.fromCharCode(0x3164, 0x115f, 0x1160, 0xffa0) + ']', 'gu');
   function clean(s) { return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(RE_INVISIBLE, '').replace(/\s+/g, ' ').trim(); }
-  // 呼び名が同じ人かを見る形（Day086と同じ。末尾の「さん」などを外す）
-  function nameKey(s) { return clean(s).normalize('NFKC').toLowerCase().replace(/\s/g, '').replace(/(.)(さん|様|さま|くん|君|ちゃん|先生)$/, '$1'); }
   function cpLen(s) { return Array.from(s).length; }
   function norm(s) {
     return String(s).normalize('NFKC').toLowerCase()
@@ -191,7 +198,7 @@ var PO = (function () {
   var LEAD_WORDS = ['lineid', 'らいんid', 'id検索', '友だち追加', '友達追加', 'ともだち追加', 'paypayid', 'kyashid'].map(wordKey);
   // 振込先・口座・請求に見える言葉を書かせない（偽の請求のように使わせない。Day086と同じ）
   var MONEY_WORDS = ['振込', '振り込', 'ふりこみ', '払込', '払い込', '送金', '入金先', '支払先', '支払い先', '口座', '銀行', 'ぎんこう', '信用金庫', '信金', 'ゆうちょ', '通帳', '暗証', 'カード番号', '名義', 'bank',
-    '請求', '未払', '未納', '支払', '支払い', '督促', '延滞', '料金', '代金', '入金', 'paypay'].map(wordKey);
+    '請求', '未払', '未納', '支払', '支払い', '督促', '延滞', '料金', '代金', '入金', 'paypay', '前金', '内金', '手付', 'デポジット', 'キャンセル料'].map(wordKey);
   var RE_PRICE = /\d\s*円|[¥￥]\s*\d|\d\s*yen/;
   var KANJI_DIGITS = '〇一二三四五六七八九';
   var RE_DATE = /(?<!\d)(?:19|20)\d{2}[\-\/.](?:0?[1-9]|1[0-2])[\-\/.](?:0?[1-9]|[12]\d|3[01])(?!\d)/g;
@@ -277,6 +284,7 @@ var PO = (function () {
       if (!isInt(p, 0, LIM.price)) errs.push(label + 'の1人あたりの料金を0〜' + LIM.price.toLocaleString('ja-JP') + '円の数字で入れてください');
       cs.push([nm, isInt(p, 0, LIM.price) ? p : 0]);
     });
+    if (dupCourse(cs)) errs.push('コースの名前が重なっています。名前を変えてください');
     if (!cs.length) errs.push('コースを1つ以上入れてください');
     if (cs.length > LIM.courses) errs.push('コースは' + LIM.courses + 'つまでです');
     var drink = 0;
@@ -296,6 +304,9 @@ var PO = (function () {
     if (encodeQ(cfg).length > HASH_MAX) return { cfg: null, errors: ['文字が多すぎてリンクにできません。絵文字を減らしてください'] };
     return { cfg: cfg, errors: [] };
   }
+  // 同じ名前のコースが2つあると、幹事さんの画面でも前後比較でも見分けられない
+  function courseKey(n) { return clean(n).normalize('NFKC').toLowerCase().replace(/ /g, ''); }
+  function dupCourse(cs) { var seen = {}; return cs.some(function (c) { var k = courseKey(c[0]); if (seen[k]) return true; seen[k] = 1; return false; }); }
   function courseLabel(c) { return c[0] + (c[1] ? ' ' + yen(c[1]) : ''); }
   function drinkLabel(d) { return '飲み放題（' + (d[0] ? '1人' + yen(d[0]) + '・' : '') + d[1] + '分）'; }
   // 幹事さんに送る文
@@ -317,8 +328,8 @@ var PO = (function () {
   function toAnswer(q, f, ans) {
     var errs = [], miss = [];
     var ad = toInt(f.adults), kd = f.kids === '' || f.kids == null ? 0 : toInt(f.kids);
-    if (!isInt(ad, 0, LIM.adults)) { errs.push('大人の人数を0〜' + LIM.adults + '人で入れてください'); ad = NaN; }
-    if (!isInt(kd, 0, LIM.kids)) { errs.push('子どもの人数を0〜' + LIM.kids + '人で入れてください'); kd = NaN; }
+    if (!isInt(ad, 0, LIM.adults)) { errs.push('大人の人数を0〜' + LIM.adults + '人で入れてください'); miss.push('people'); ad = NaN; }
+    if (!isInt(kd, 0, LIM.kids)) { errs.push('子どもの人数を0〜' + LIM.kids + '人で入れてください'); miss.push('people'); kd = NaN; }
     var total = ad + kd, okTotal = isInt(total, 1, LIM.total);
     if (isInt(total, 0, 999) && !okTotal) { errs.push(total < 1 ? '人数（大人と子どもの合計）を1人以上にしてください' : '人数は合わせて' + LIM.total + '人までです'); miss.push('people'); }
     var counts = q.courses.length === 1 && okTotal ? [total] : (f.counts || []).map(toInt);
@@ -371,7 +382,7 @@ var PO = (function () {
     var out = [];
     if (g[0].length) out.push('アレルギー: ' + g[0].join('、'));
     if (g[1].length) out.push('苦手: ' + g[1].join('、'));
-    return out.length ? out.join(sep) : 'なし';
+    return out.length ? out.join(sep) : '記入なし';
   }
   function hasAlg(a, t) { return a.alg.some(function (r) { return r[2] === t; }); }
   function drinkText(a) { return a.drinkN ? a.drinkN + '人' : 'つけない'; }
@@ -386,7 +397,7 @@ var PO = (function () {
     a.courses.forEach(function (c, i) { L.push('・' + courseLabel(c) + ': ' + a.counts[i] + '人'); });
     if (a.drink) L.push('飲み放題: ' + drinkText(a));
     var at = algText(a, '／');
-    L.push(at === 'なし' ? 'アレルギー・苦手: なし' : at);
+    L.push(at === '記入なし' ? 'アレルギー・苦手: 記入なし' : at);
     L.push('お支払い: ' + PAY[a.pay] + '・領収書: ' + RCPT[a.rcpt]);
     if (a.note) L.push('ひと言: ' + a.note);
     if (url) L.push(url);
@@ -411,7 +422,7 @@ var PO = (function () {
   function isStr(v, max, req) { return typeof v === 'string' && cpLen(v) <= max && (!req || v.length > 0) && v === clean(v) && !blockedReason(v); }
   function okCourses(cs) {
     if (!Array.isArray(cs) || cs.length < 1 || cs.length > LIM.courses) return false;
-    return cs.every(function (c) { return Array.isArray(c) && c.length === 2 && isStr(c[0], LIM.course, true) && isInt(c[1], 0, LIM.price); });
+    return cs.every(function (c) { return Array.isArray(c) && c.length === 2 && isStr(c[0], LIM.course, true) && isInt(c[1], 0, LIM.price); }) && !dupCourse(cs);
   }
   function okDrink(d) { return d === 0 || (Array.isArray(d) && d.length === 2 && isInt(d[0], 0, LIM.dprice) && isInt(d[1], LIM.dminMin, LIM.dminMax)); }
   function fromQ(a) {
@@ -462,24 +473,29 @@ var PO = (function () {
   // 変わった項目の名前（FIELDS の順）
   function changes(x, y) {
     var out = [];
+    if (x.day !== y.day || x.time !== y.time || x.name !== y.name) out.push('予約日・時刻');
     if (x.adults !== y.adults || x.kids !== y.kids) out.push('人数');
     if (JSON.stringify(x.courses) !== JSON.stringify(y.courses) || JSON.stringify(x.counts) !== JSON.stringify(y.counts)) out.push('コース');
     if (JSON.stringify(x.drink) !== JSON.stringify(y.drink) || x.drinkN !== y.drinkN) out.push('飲み放題');
-    if (JSON.stringify(x.alg) !== JSON.stringify(y.alg)) out.push('アレルギー・苦手');
+    if (algSorted(x) !== algSorted(y)) out.push('アレルギー・苦手');
     if (x.pay !== y.pay) out.push('お支払い');
     if (x.rcpt !== y.rcpt) out.push('領収書');
     if (x.note !== y.note) out.push('ひと言');
     return out;
   }
+  function algSorted(a) { return JSON.stringify(a.alg.map(function (r) { return JSON.stringify(r); }).sort()); }
   function delta(p, n) { return n > p ? '▲' + (n - p) : n < p ? '▼' + (p - n) : ''; }
   // 比べる表の行 { label, prev, now, delta, changed }
   function compareRows(x, y) {
     var R = [];
     function row(label, p, n, d) { R.push({ label: label, prev: p, now: n, delta: d || '', changed: p !== n }); }
+    row('予約日・時刻', dateJa(x.day) + x.time + '〜' + (x.name !== y.name ? '\n' + sama(x.name) : ''), dateJa(y.day) + y.time + '〜' + (x.name !== y.name ? '\n' + sama(y.name) : ''));
     row('人数', peopleText(x), peopleText(y), delta(total(x), total(y)));
+    var sameList = JSON.stringify(x.courses) === JSON.stringify(y.courses);
+    if (sameList) x.courses.forEach(function (c, i) { row(courseLabel(c), x.counts[i] + '人', y.counts[i] + '人', delta(x.counts[i], y.counts[i])); });
     var names = [];
     x.courses.concat(y.courses).forEach(function (c) { var k = courseLabel(c); if (names.indexOf(k) < 0) names.push(k); });
-    names.forEach(function (k) {
+    if (!sameList) names.forEach(function (k) {
       function cnt(a) { for (var i = 0; i < a.courses.length; i++) if (courseLabel(a.courses[i]) === k) return a.counts[i]; return null; }
       var p = cnt(x), n = cnt(y);
       row(k, p == null ? '（なし）' : p + '人', n == null ? '（なし）' : n + '人', p != null && n != null ? delta(p, n) : '');
@@ -488,7 +504,8 @@ var PO = (function () {
       var lx = x.drink ? drinkLabel(x.drink) : '飲み放題', ly = y.drink ? drinkLabel(y.drink) : '飲み放題';
       row(ly === lx ? ly : '飲み放題', x.drink ? (ly === lx ? '' : lx + '\n') + drinkText(x) : 'なし', y.drink ? (ly === lx ? '' : ly + '\n') + drinkText(y) : 'なし', x.drink && y.drink ? delta(x.drinkN, y.drinkN) : '');
     }
-    row('アレルギー・苦手', algText(x, '\n'), algText(y, '\n'));
+    var ax = algText(x, '\n'), ay = algText(y, '\n');
+    R.push({ label: 'アレルギー・苦手', prev: ax, now: ay, delta: '', changed: algSorted(x) !== algSorted(y) });
     row('お支払い・領収書', PAY[x.pay] + '・領収書' + RCPT[x.rcpt], PAY[y.pay] + '・領収書' + RCPT[y.rcpt]);
     if (x.note || y.note) row('ひと言', x.note || '（なし）', y.note || '（なし）');
     row('合計の目安', yen(estimate(x)), yen(estimate(y)), '');
@@ -540,7 +557,7 @@ var PO = (function () {
   function algMark(it) { var a = hasAlg(it, 0), d = hasAlg(it, 1); return a && d ? 'アレルギー・苦手あり' : a ? 'アレルギーあり' : d ? '苦手あり' : ''; }
 
   var api = {
-    KEY: KEY, LIM: LIM, HASH_MAX: HASH_MAX, URL_MAX: URL_MAX, PAY: PAY, RCPT: RCPT, ALG: ALG, FIELDS: FIELDS, now: null,
+    KEY: KEY, LIM: LIM, HASH_MAX: HASH_MAX, URL_MAX: URL_MAX, PAY: PAY, RCPT: RCPT, FIELDS: FIELDS, now: null,
     clean: clean, cpLen: cpLen, blockedReason: blockedReason, validDate: validDate, validSlot: validSlot, validStamp: validStamp, dayNum: dayNum, today: today, nowStamp: nowStamp, addDays: addDays,
     dateJa: dateJa, md: md, stampJa: stampJa, yen: yen, toInt: toInt, sama: sama, samaSp: samaSp,
     toQuestion: toQuestion, askMessage: askMessage, courseLabel: courseLabel, drinkLabel: drinkLabel, toAnswer: toAnswer, answerMessage: answerMessage,
@@ -739,7 +756,7 @@ var POUI = (function () {
       h('h1', { text: '団体予約の確認リンク' }),
       h('p', { class: 'lead', text: '忘年会などの団体予約で、幹事さんに確認リンクを送ります。幹事さんが人数・コース・飲み放題・アレルギーや苦手な食材・お支払いを選んでリンクで送り返すと、この端末に予約の一覧が残ります。人数が変わって送り直されたときは、前回との違いが分かります。' }),
       h('ul', { class: 'notes' }, [
-        h('li', { text: '一覧は、幹事さんが選んだ内容の控えです。予約の受付や確定はしません。席の確保は、いつもどおり幹事さんとのやりとりで行ってください。' }),
+        h('li', { text: '一覧は、幹事さんが選んだ内容の控えです。このページは予約を受け付けたり決めたりしません。席の用意は、いつもどおり幹事さんとのやりとりで決めてください。' }),
         h('li', { text: 'アレルギー・苦手の欄は、事前に伝えてもらうためのメモです。対応できるかどうかは、このページでは判断しません。' }),
         h('li', { text: '一覧はこの端末のブラウザにだけ保存されます。ブラウザのデータを消すと一覧も消えます。幹事さんから返ってきたリンクを開けば、もう一度取り込めます。' }),
         h('li', { text: '連絡先・リンク・口座に関わる文字は入れられないようにしています（すべての言い方は防げません）。' })
@@ -770,7 +787,7 @@ var POUI = (function () {
     var timeIn = h('select');
     for (var hh = 0; hh < 24; hh++) for (var mm = 0; mm < 60; mm += 15) { var tv = (hh < 10 ? '0' : '') + hh + ':' + (mm ? mm : '00'); timeIn.appendChild(opt(tv, tv, tv === draft.time)); }
     shopIn.value = store.shop; nameIn.value = draft.name; dayIn.value = draft.day;
-    form.appendChild(field('お店の名前', ' （任意・20字まで・この端末に保存）', shopIn));
+    form.appendChild(field('お店の名前', storeIssue === 'broken' ? ' （一覧が読み取れないあいだは保存しません）' : ' （任意・20字まで・この端末に保存）', shopIn));
     form.appendChild(field('幹事さんの呼び名', ' （10字まで・フルネームではなく、ふだんの呼び名で）', nameIn));
     form.appendChild(h('div', { class: 'row2' }, [field('予約日', '', dayIn), field('開始時刻', '', timeIn)]));
     var planSt = stepper('予定人数', '分かっていれば（0は未定）。幹事さんの画面の最初の値になります', draft.plan === '' ? 0 : draft.plan, 0, PO.LIM.total, function (v) { draft.plan = v; edited(); });
@@ -830,7 +847,7 @@ var POUI = (function () {
     }
     [nameIn, dayIn, dlIn].forEach(function (e) { e.addEventListener('input', edited); });
     timeIn.addEventListener('change', edited);
-    shopIn.addEventListener('input', function () { store.shop = shopIn.value; saveStore(store); brokenBox.hidden = !storeIssue; edited(); });
+    shopIn.addEventListener('input', function () { store.shop = shopIn.value; if (storeIssue !== 'broken') saveStore(store); brokenBox.hidden = !storeIssue; edited(); });
     makeBtn.addEventListener('click', function () {
       showErrors = true;
       var r = current(); errorsBox(errBox, r.errors);
@@ -914,7 +931,8 @@ var POUI = (function () {
     page.appendChild(h('div', { class: 'who' }, [
       h('p', { class: 'wn', text: PO.sama(q.name) }),
       h('p', { class: 'wd', text: PO.dateJa(q.day) + q.time + '〜のご予約' }),
-      q.dl ? h('p', { class: 'wl', text: '人数は' + PO.dateJa(q.dl) + 'までにお知らせください' }) : null
+      q.dl ? h('p', { class: 'wl', text: '人数は' + PO.dateJa(q.dl) + 'までにお知らせください' }) : null,
+      PO.dayNum(q.day) < PO.dayNum(PO.today()) ? h('p', { class: 'miss', text: 'このご予約の日は過ぎています。お店に確かめてください' }) : null
     ]));
     var f = { adults: String(q.plan || ''), kids: '0', counts: q.courses.map(function () { return '0'; }), drinkN: q.plan ? String(q.plan) : '0', alg: [], pay: '', rcpt: '', note: '' };
     if (q.courses.length > 1 && q.plan) f.counts[0] = String(q.plan);
@@ -968,7 +986,7 @@ var POUI = (function () {
     }
     addAlg.addEventListener('click', function () { if (f.alg.length < PO.LIM.alg) { f.alg.push(['', '1', '']); renderAlg(); invalidate(); } });
     renderAlg();
-    box('alg', 'アレルギー・苦手な食材', [h('p', { class: 'small', text: 'お名前は書かず、何が何人かだけ書いてください。なければ空のままで大丈夫です。対応できるかは、お店から改めてご連絡します。' }), algList, h('div', { class: 'btns' }, [addAlg])]);
+    box('alg', 'アレルギー・苦手な食材', [h('p', { class: 'small', text: 'お名前は書かず、何が何人かだけ書いてください。書かないときは、お店には「記入なし」と伝わります（いないという意味にはなりません）。対応できるかは、お店から改めてご連絡します。' }), algList, h('div', { class: 'btns' }, [addAlg])]);
     box('pay', 'お支払い', [radios('pay', PO.PAY.map(function (t, i) { return { c: String(i), label: t }; }), '', function (v) { f.pay = v; sets.pay.fs.classList.remove('missing'); sets.pay.miss.hidden = true; invalidate(); }, 'choices3')]);
     box('rcpt', '領収書', [radios('rcpt', [{ c: '1', label: '要る' }, { c: '0', label: '要らない' }], '', function (v) { f.rcpt = v; sets.rcpt.fs.classList.remove('missing'); sets.rcpt.miss.hidden = true; invalidate(); }, 'choices2')]);
     var nid = 'f' + (++uid);
@@ -994,6 +1012,7 @@ var POUI = (function () {
         return;
       }
       var url = lp.set(baseUrl() + '#' + PO.encodeA(r.cfg));
+      if (!url) { out.el.hidden = true; return; }
       out.el.hidden = false; out.set(PO.answerMessage(r.cfg, url)); // 表示してから高さを合わせる（隠れているあいだは高さが測れない）
       if (out.el.scrollIntoView) out.el.scrollIntoView({ block: 'start' });
     });
@@ -1015,7 +1034,7 @@ var POUI = (function () {
     document.title = PO.sama(a.name) + 'のご予約内容';
     app.textContent = '';
     var page = h('div', { class: 'onepage' }); app.appendChild(page);
-    page.appendChild(h('div', { class: 'notice', text: '幹事さんが選んで送ってきた内容です（' + PO.stampJa(a.ans) + 'に作成）。当サイトは内容を確認していません。予約の確定ではありません。' }));
+    page.appendChild(h('div', { class: 'notice', text: '幹事さんが選んで送ってきた内容です（' + PO.stampJa(a.ans) + 'に作成）。当サイトは内容を確認していません。ご予約が決まったという意味ではありません。コースの料金も、返ってきたリンクに書かれた値です。お店の料金表と照らしてください。' }));
     page.appendChild(h('div', { class: 'who' }, [
       h('p', { class: 'wn', text: PO.sama(a.name) + 'のご予約' }),
       h('p', { class: 'wd', text: PO.dateJa(a.day) + a.time + '〜' })
@@ -1043,8 +1062,8 @@ var POUI = (function () {
     box.appendChild(h('p', { class: 'cs', text: '送り直しが届きました。前に届いた内容と比べています。' }));
     if (it.ans < old.ans) box.appendChild(h('p', { class: 'old', text: '今回のリンクは、前に届いた内容より古いリンクです。' }));
     function tr(r) {
-      return h('tr', { class: r.changed ? 'chg' : null }, [h('th', { scope: 'row', text: r.label }), h('td', { class: 'prev', text: r.prev }),
-        h('td', { class: 'now' }, [r.now, r.delta ? ' ' : null, r.delta ? h('span', { class: 'dl', text: r.delta }) : null])]);
+      return h('tr', { class: r.changed ? 'chg' : null }, [h('th', { scope: 'row', text: r.label }), h('td', { class: 'prev', 'data-h': '前回', text: r.prev }),
+        h('td', { class: 'now', 'data-h': '今回' }, [r.now, r.delta ? ' ' : null, r.delta ? h('span', { class: 'dl', text: r.delta }) : null])]);
     }
     var tbody = h('tbody', null, chg.map(tr)), more = h('tbody', null, same.map(tr)); more.hidden = true;
     box.appendChild(h('table', null, [h('thead', null, [h('tr', null, [h('th', { scope: 'col', text: '項目' }), h('th', { scope: 'col', text: '前回 ' + PO.stampJa(old.ans) }), h('th', { scope: 'col', text: '今回 ' + PO.stampJa(it.ans) })])]), tbody, more]));
@@ -1054,7 +1073,7 @@ var POUI = (function () {
       box.appendChild(tg);
     }
     box.appendChild(h('div', { class: 'stack' }, [
-      h('button', { type: 'button', class: 'primary', text: '新しい内容で上書きする', onclick: function () { box.remove(); onYes(); } }),
+      h('button', { type: 'button', class: 'primary', text: it.ans < old.ans ? 'この古い内容で上書きする' : '新しい内容で上書きする', onclick: function () { box.remove(); onYes(); } }),
       h('button', { type: 'button', text: 'やめる', onclick: function () { box.remove(); } })
     ]));
     where.appendChild(box);
@@ -1083,7 +1102,7 @@ var POUI = (function () {
       }
       if (!PO.clean(cur.shop) && a.shop) cur.shop = a.shop;
       saveStore(cur);
-      goShop(PO.md(a.day) + ' ' + PO.sama(a.name) + 'のご予約を' + (old ? '新しい内容で上書きしました（変わった項目: ' + (it.changed.join('・') || 'なし') + '）。' : '一覧に取り込みました。'));
+      goShop(PO.md(a.day) + ' ' + PO.sama(a.name) + 'のご予約を' + (old ? '上書きしました（変わった項目: ' + (it.changed.join('・') || 'なし') + '）。' : '一覧に取り込みました。'));
     }
     if (same) {
       if (PO.sameContent(same, it)) { msg.textContent = 'このご予約内容は、もう一覧に取り込み済みです（中身も同じです）。'; return; }

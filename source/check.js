@@ -128,7 +128,7 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
   // 4) 受け取る画面 → 取り込み
   await reopen(prevUrl);
   ok('receive table', JSON.stringify(await b.ev(`[...document.querySelectorAll('.ans tr')].map(r=>r.innerText.replace(/\\s+/g,' ').trim())`)) === JSON.stringify(['人数 15人（大人15）', 'おまかせ鍋コース 4,500円 11人', '軽めのおつまみコース 3,500円 4人', '飲み放題（1人1,800円・120分） 13人', 'アレルギー・苦手 苦手: パクチー 2人', 'お支払い まとめて', '領収書 要る', '合計の目安 86,900円（目安です。お会計とは違うことがあります）']), await b.ev(`[...document.querySelectorAll('.ans tr')].map(r=>r.innerText)`));
-  ok('receive notice/mark', /11\/3 20:40に作成/.test(await b.ev(body)) && /予約の確定ではありません/.test(await b.ev(body)) && /苦手あり/.test(await b.ev(body)));
+  ok('receive notice/mark', /11\/3 20:40に作成/.test(await b.ev(body)) && /ご予約が決まったという意味ではありません/.test(await b.ev(body)) && /苦手あり/.test(await b.ev(body)));
   m = await b.ev(measure); ok('receive 375 no overflow', m.sw <= 375 && !m.over.length, m); ok('receive targets', !m.small.length, m.small);
   await b.shot(path.join(OUT, 'receive-375.png'), { x: 0, y: 0, width: 375, height: await b.ev(`document.documentElement.scrollHeight`) });
   await b.ev(click('一覧に取り込む')); await b.sleep(200);
@@ -142,10 +142,10 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
   await reopen(nowUrl); await b.ev(click('一覧に取り込む')); await b.sleep(150);
   const cmp = await b.ev(`(()=>{const c=document.querySelector('.cmp');return c&&{head:c.querySelector('.ch').textContent,cols:[...c.querySelectorAll('thead th')].map(x=>x.textContent),rows:[...c.querySelectorAll('tbody:not([hidden]) tr')].map(r=>r.innerText.replace(/\\s+/g,' ').trim()),chg:c.querySelectorAll('tr.chg').length,more:c.querySelector('.linkbtn')&&c.querySelector('.linkbtn').textContent,old:!!c.querySelector('.old')}})()`);
   ok('S5 compare head', cmp && cmp.head === 'たなかさま　12/11（金） 19:00〜' && JSON.stringify(cmp.cols) === JSON.stringify(['項目', '前回 11/3 20:40', '今回 11/4 21:10']), cmp);
-  ok('S5 compare rows', cmp && JSON.stringify(cmp.rows) === JSON.stringify(['人数 15人（大人15） 13人（大人13） ▼2', 'おまかせ鍋コース 4,500円 11人 9人 ▼2', '飲み放題（1人1,800円・120分） 13人 11人 ▼2', 'アレルギー・苦手 苦手: パクチー 2人 アレルギー: えび 1人 苦手: パクチー 2人', '合計の目安 86,900円 74,300円']) && cmp.chg === 5 && cmp.more === '変わっていない項目 2つを見る' && !cmp.old, cmp);
+  ok('S5 compare rows', cmp && JSON.stringify(cmp.rows) === JSON.stringify(['人数 15人（大人15） 13人（大人13） ▼2', 'おまかせ鍋コース 4,500円 11人 9人 ▼2', '飲み放題（1人1,800円・120分） 13人 11人 ▼2', 'アレルギー・苦手 苦手: パクチー 2人 アレルギー: えび 1人 苦手: パクチー 2人', '合計の目安 86,900円 74,300円']) && cmp.chg === 5 && cmp.more === '変わっていない項目 3つを見る' && !cmp.old, cmp);
   m = await b.ev(measure); ok('compare 375 no overflow', m.sw <= 375 && !m.over.length, m); ok('compare 375 targets', !m.small.length, m.small);
-  await b.ev(click('変わっていない項目 2つを見る')); await b.sleep(60);
-  ok('S5 more rows', (await b.ev(`document.querySelectorAll('.cmp tbody:not([hidden]) tr').length`)) === 7);
+  await b.ev(click('変わっていない項目 3つを見る')); await b.sleep(60);
+  ok('S5 more rows', (await b.ev(`document.querySelectorAll('.cmp tbody:not([hidden]) tr').length`)) === 8);
   await b.shot(path.join(OUT, 'compare-375.png'), { x: 0, y: 0, width: 375, height: await b.ev(`document.documentElement.scrollHeight`) });
   await b.ev(click('やめる')); await b.sleep(80);
   ok('cancel keeps old', (await b.ev(getStore)).items[0].adults === 15 && !(await b.ev(`document.querySelector('.cmp')`)));
@@ -167,7 +167,7 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
   ok('delete confirmed', (await b.ev(items)).length === 1);
   // 確かめる枠を出しているあいだに別のタブで一覧が変わっても、押した瞬間の一覧に対して保存する
   const keep = (await b.ev(getStore)).items[0];
-  const again = await b.ev(`location.origin+'/#'+PO.encodeA(Object.assign(${JSON.stringify(nowCfg)},{rid:${JSON.stringify(keep.rid)},name:${JSON.stringify(keep.name)},day:${JSON.stringify(keep.day)},time:${JSON.stringify(keep.time)},pay:2,ans:'2026-11-04T21:50'}))`);
+  const again = await b.ev(`location.origin+'/#'+PO.encodeA(Object.assign(${JSON.stringify(nowCfg)},{rid:${JSON.stringify(keep.rid)},name:${JSON.stringify(keep.name)},day:${JSON.stringify(keep.day)},time:${JSON.stringify(keep.time)},pay:2,ans:'2026-11-04T22:00'}))`);
   await reopen(again); await b.ev(click('一覧に取り込む')); await b.sleep(100);
   ok('stale: compare shown', !!(await b.ev(`document.querySelector('.cmp')`)));
   await b.ev(`(()=>{const v=JSON.parse(localStorage.getItem('${KEY}'));const x=JSON.parse(JSON.stringify(v.items[0]));x.id='other1';x.rid='other111';x.name='みお';v.items.push(x);localStorage.setItem('${KEY}',JSON.stringify(v))})()`);
@@ -195,6 +195,11 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
     await b.shot(path.join(OUT, 'shop-' + w + '.png'), { x: 0, y: 0, width: w, height: await b.ev(`document.documentElement.scrollHeight`) });
   }
   await reopen(nowUrl, 1000, 1200);
+  // レビュー①: アレルギー欄が空なら「記入なし」・過ぎた予約日の確認リンクには注意
+  await reopen(ORIGIN + '#' + await b.ev(`PO.encodeA(PO.toAnswer(${JSON.stringify(qcfg)},{adults:'15',kids:'0',counts:['11','4'],drinkN:'13',alg:[],pay:'0',rcpt:'1',note:''}).cfg)`));
+  ok('R1-1 empty alg shown as 記入なし', /アレルギー・苦手記入なし/.test(await b.ev(`[...document.querySelectorAll('.ans tr')].map(r=>r.textContent).join('|')`)) && !/苦手: なし/.test(await b.ev(body)));
+  await reopen(ORIGIN + '#' + await b.ev(`PO.encodeQ(Object.assign(${JSON.stringify(qcfg)},{day:'2026-11-04',dl:'',made:'2026-11-03T10:00'}))`)); await b.ev(`PO.now=new Date(2026,10,6,9,0);POUI.route()`); await b.sleep(100);
+  ok('R1-14 past day warned', /このご予約の日は過ぎています/.test(await b.ev(body)));
   ok('receive 1000 max width', await b.ev(`document.querySelector('.onepage').getBoundingClientRect().width`) <= 520);
   // 7) 壊れた保存データは消さない・一部だけ壊れたとき
   await b.ev(`localStorage.clear();localStorage.setItem('${KEY}','{bad')`); await reopen();
@@ -204,6 +209,9 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
   ok('broken: sample hidden', await b.ev(`[...document.querySelectorAll('button')].find(x=>x.textContent==='サンプルを入れる').hidden`));
   await reopen();
   ok('broken: same backup not duplicated', (await b.ev(bk)).length === 1);
+  // レビュー①: 読み取れないあいだは、お店の名前を入れても本体を空の一覧で上書きしない
+  await b.ev(val('例 いろり屋', 'いろり屋')); await b.sleep(60);
+  ok('R1-3 broken: shop name not saved', await b.ev(`localStorage.getItem('${KEY}')`) === '{bad' && /一覧が読み取れないあいだは保存しません/.test(await b.ev(body)));
   for (const bad of ['{bad2', '{bad3', '{bad4']) { await b.ev(`localStorage.setItem('${KEY}',${JSON.stringify(bad)})`); await b.sleep(5); await reopen(); }
   ok('backups keep newest 3', JSON.stringify(await b.ev(bk)) === '["{bad2","{bad3","{bad4"]', await b.ev(bk));
   await reopen(nowUrl); await b.ev(click('一覧に取り込む')); await b.sleep(100);
@@ -272,7 +280,7 @@ const algRow = i => `document.querySelectorAll('.alg')[${i}]`;
   // 15) 最長の値（お店の名前20字・コース名20字×4・アレルギー5行）375px・ダーク
   await b.ev(`localStorage.clear()`); await reopen(null, 375, 900, true);
   await b.ev(val('例 いろり屋', 'いろり屋いろり屋いろり屋いろり屋いろ')); await b.ev(val('例 たなか', 'ＷＷＷＷＷＷＷＷＷＷ')); await b.ev(dateIn(0, '2026-12-11'));
-  for (let i = 1; i <= 4; i++) { if (i > 1) { await b.ev(click('＋ コースを足す')); await b.sleep(40); } await b.ev(val('コース' + i + 'の名前', 'あいうえおかきくけこさしすせそたちつてと')); await b.ev(val('コース' + i + 'の1人あたりの料金（円）', '99999')); }
+  for (let i = 1; i <= 4; i++) { if (i > 1) { await b.ev(click('＋ コースを足す')); await b.sleep(40); } await b.ev(val('コース' + i + 'の名前', 'あいうえおかきくけこさしすせそたちつて' + i)); await b.ev(val('コース' + i + 'の1人あたりの料金（円）', '99999')); }
   await b.ev(choose('drink', '1')); await b.ev(val('例 1800', '9999'));
   await b.ev(click('リンクを作る')); await b.sleep(120);
   m = await b.ev(measure); ok('longest shop 375 dark', m.sw <= 375 && !m.over.length, m); ok('longest shop targets', !m.small.length, m.small);
